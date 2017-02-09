@@ -24,20 +24,20 @@ class ScalaTest extends FlatSpec with Matchers with PropertyChecks {
     val stack = new Stack[Int]
     stack.push(1)
     stack.push(2)
-    stack.pop() should be (2)
-    stack.pop() should be (1)
+    stack.pop() should be(2)
+    stack.pop() should be(1)
   }
 
   it should "throw NoSuchElementException if an empty stack is popped" in {
     val emptyStack = new Stack[Int]
-    a [NoSuchElementException] should be thrownBy {
+    a[NoSuchElementException] should be thrownBy {
       emptyStack.pop()
     }
   }
 
   forAll { (n: Int, d: Int) =>
 
-    whenever (d != 0 && d != Integer.MIN_VALUE
+    whenever(d != 0 && d != Integer.MIN_VALUE
       && n != Integer.MIN_VALUE) {
 
       val f = new Fraction(n, d)
@@ -47,9 +47,24 @@ class ScalaTest extends FlatSpec with Matchers with PropertyChecks {
       else if (n != 0)
         f.numer should be < 0
       else
-        f.numer should be === 0
+        f.numer === 0
 
       f.denom should be > 0
+    }
+  }
+
+  val invalidCombos = Table(
+    ("n", "d"),
+    (Integer.MIN_VALUE, Integer.MIN_VALUE),
+    (1, Integer.MIN_VALUE),
+    (Integer.MIN_VALUE, 1),
+    (Integer.MIN_VALUE, 0),
+    (1, 0)
+  )
+
+  forAll(invalidCombos) { (n: Int, d: Int) =>
+    an[IllegalArgumentException] should be thrownBy {
+      new Fraction(n, d)
     }
   }
 }
