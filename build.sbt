@@ -5,6 +5,8 @@ version := "1.0"
 scalaVersion := "2.12.1"
 
 libraryDependencies ++= Seq(
+  "jline" % "jline" % "2.14.3",
+
   "junit" % "junit" % "4.12" % "test",
 
   "org.scalacheck" %% "scalacheck" % "1.13.4" % "test",
