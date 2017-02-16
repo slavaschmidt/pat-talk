@@ -44,7 +44,7 @@ class Term(out: PrintStream) {
   def eraseLine(n: Int) = csi(n, 'K')
 
 
-  def textColor(color: Int) = s"${Ansi.csi}38;5;${color}m"
+
 
   def backgroundColor(color: Int) = s"${Ansi.csi}48;5;${color}m"
 
@@ -52,6 +52,18 @@ class Term(out: PrintStream) {
     s"${textColor(txtColor)}${backgroundColor(backColor)}${str}${resetColor}"
 
   def formatTxt(str: String)(txtColor: Int) = s"${textColor(txtColor)}${str}${resetColor}"
+
+
+
+}
+
+object Ansi {
+  val csi = "\033["
+  def textColor(color: Int) = s"${csi}38;5;${color}m"
+  val resetColor = s"${csi}0m"
+  val resetUnderline = "\u001b[24m"
+  val resetForegroundColor = "\u001b[39m"
+  val resetBackgroundColor = "\u001b[49m"
 
   val black = 0
   val maroon = 1
@@ -71,13 +83,4 @@ class Term(out: PrintStream) {
   val white = 15
 
   val orange = 166
-
-}
-
-object Ansi {
-  val csi = "\033["
-  val resetColor = s"${csi}0m"
-  val resetUnderline = "\u001b[24m"
-  val resetForegroundColor = "\u001b[39m"
-  val resetBackgroundColor = "\u001b[49m"
 }
