@@ -9,7 +9,7 @@ import scala.collection.mutable
 
 case class User(color: Int)
 
-trait Cell {
+trait OldCell {
   def top: Boolean
   def bottom: Boolean
   def left: Boolean
@@ -19,7 +19,7 @@ trait Cell {
   def fullBorder = top && bottom && left && right
   def noBorder = !top && !bottom && !left && !right
 
-  def mirror: Cell
+  def mirror: OldCell
 
   def topChar = if (top) "─" else " "
   def leftChar = if (left) "│" else " "
@@ -33,11 +33,11 @@ trait Cell {
 object EmptyCell {
   def apply = new EmptyCell(false, false, false, false)
 }
-case class EmptyCell(top: Boolean, bottom: Boolean, left: Boolean, right: Boolean) extends Cell {
+case class EmptyCell(top: Boolean, bottom: Boolean, left: Boolean, right: Boolean) extends OldCell {
   override val owner = None
   def mirror = EmptyCell(bottom, top, right, left)
 }
-case class FullCell(user: User) extends Cell {
+case class FullCell(user: User) extends OldCell {
   val owner = Some(user)
   val top = true
   val bottom = true
@@ -46,9 +46,9 @@ case class FullCell(user: User) extends Cell {
   val mirror = this
 }
 
-class Board(width: Int, height: Int) {
+class BoardOld(width: Int, height: Int) {
 
-  val state = mutable.ArrayBuffer.fill[Cell](height, width)(EmptyCell.apply)
+  val state = mutable.ArrayBuffer.fill[OldCell](height, width)(EmptyCell.apply)
 
   type Border = (String, String, String)
   val topLine = ("┌", "┬", "┐\n")
@@ -56,7 +56,7 @@ class Board(width: Int, height: Int) {
   val botLine = ("└", "┴", "┘\n")
 
 
-  def drawLine(border: Border, drawLine: Boolean = true)(row: Seq[Cell]) = {
+  def drawLine(border: Border, drawLine: Boolean = true)(row: Seq[OldCell]) = {
     val line: String = row.init.map { _.topChar + border._2 }.mkString
     val topLine = border._1 + line + row.last.topChar + border._3
     val bottomLine =
@@ -133,7 +133,7 @@ object Test extends App {
 
   term.eraseDisplay(2)
   term.pos(1, 1)
-  val board = new Board(20, 20)
+  val board = new BoardOld(20, 20)
   board.printBoard
   term.pos(1, 1)
 
