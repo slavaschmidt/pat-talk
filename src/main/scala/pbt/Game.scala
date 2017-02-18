@@ -5,9 +5,16 @@ import pbt.Demo.Board
 import scala.util.Random
 
 object RunnableDemo extends App {
-  val players = Seq(Demo.User(Ansi.green, Demo.finishingStrategy), Demo.User(Ansi.orange, Demo.twinStrategy))
+  val term = new Term(System.out)
+  term.savePos
+  term.eraseDisplay(2)
+
+  val players = Seq(Demo.User(Ansi.green, Demo.fullStrategy), Demo.User(Ansi.orange, Demo.twinStrategy))
   val board = Board(10, 10, () => Demo.EmptyCell(Set.empty))
   val winners = Demo.game(players, board)
+
+  term.restorePos
+
   println(winners)
 }
 
@@ -49,6 +56,20 @@ object Demo {
     val cell =
       if (bestCells.nonEmpty) bestCells(Random.nextInt(bestCells.size))
       else if (nextBestCells.nonEmpty) nextBestCells(Random.nextInt(nextBestCells.size))
+      else cells(Random.nextInt(cells.size))
+    val (x, y) = board.coords(cell)
+    val border = Border.all.diff(cell.borders).head
+    Move(x, y, border)
+  }
+  def fullStrategy: Strategy = board => {
+    val cells = board.emptyCells
+    val bestCells = cells.filter(_.borders.size == 3)
+    lazy val nextBestCells = cells.filter(_.borders.size == 1)
+    lazy val lastBestCells = cells.filter(_.borders.isEmpty)
+    val cell =
+      if (bestCells.nonEmpty) bestCells(Random.nextInt(bestCells.size))
+      else if (nextBestCells.nonEmpty) nextBestCells(Random.nextInt(nextBestCells.size))
+      else if (lastBestCells.nonEmpty) lastBestCells(Random.nextInt(lastBestCells.size))
       else cells(Random.nextInt(cells.size))
     val (x, y) = board.coords(cell)
     val border = Border.all.diff(cell.borders).head

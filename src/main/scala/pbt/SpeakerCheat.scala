@@ -29,13 +29,10 @@ object SpeakerCheat {
     }
 
     def drawBoard = {
-      term.savePos
       term.eraseDisplay(2)
       term.pos(1, 1)
       println(fullBoard)
-      term.restorePos
     }
-
 
     drawBoard
   }
