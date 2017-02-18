@@ -28,13 +28,13 @@ object SpeakerCheat {
         drawLine(botLine, drawLine = false)(board.row(board.height-1).map(richCell).map(_.mirror))
     }
 
-    def drawBoard = {
+    def printBoard = {
       term.eraseDisplay(2)
       term.pos(1, 1)
       println(fullBoard)
     }
 
-    drawBoard
+    fullBoard
   }
 
   implicit def richCell(cell: Cell): RichCell = RichCell(cell)

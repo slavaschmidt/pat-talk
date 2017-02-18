@@ -5,23 +5,32 @@ import pbt.Demo.Board
 import scala.util.Random
 
 object RunnableDemo extends App {
+
+  val players = Seq(Demo.User(Ansi.green, Demo.fullStrategy), Demo.User(Ansi.orange, Demo.randomStrategy))
+  val board = Board(10, 10, () => Demo.EmptyCell(Set.empty))
+  val (winners, log) = Demo.game(players, board)
+
+
   val term = new Term(System.out)
   term.savePos
+
+  log.reverse.foreach { l =>
+    term.eraseDisplay(2)
+    term.pos(1,1)
+    println(SpeakerCheat.drawBoard(l))
+    Thread.sleep(100)
+  }
   term.eraseDisplay(2)
-
-  val players = Seq(Demo.User(Ansi.green, Demo.fullStrategy), Demo.User(Ansi.orange, Demo.twinStrategy))
-  val board = Board(10, 10, () => Demo.EmptyCell(Set.empty))
-  val winners = Demo.game(players, board)
-
   term.restorePos
-
+  println(log.size)
   println(winners)
 }
 
 object Demo {
 
   type Winners = Set[User]
-  type Game = (Seq[User], Board) => Winners
+  type GameLog = Seq[Board]
+  type Game = (Seq[User], Board) => (Winners, GameLog)
   type Strategy = Board => Move
 
   type Turn = (Board, User) => Board
@@ -75,19 +84,21 @@ object Demo {
     val border = Border.all.diff(cell.borders).head
     Move(x, y, border)
   }
+
+  def game: Game = (users, board) => gameWithLog(users, board, Nil)
+
   // @tailrec
-  def game: Game = (users, board) => {
+  def gameWithLog: (Seq[User], Board, GameLog) => (Winners, GameLog) = (users, board, log) => {
     val nextUser = users.head
     val newBoard = turn(board, nextUser)
-    SpeakerCheat.drawBoard(newBoard)
+    val newLog = newBoard +: log
     if (newBoard.gameEnd)
-      newBoard.winners
+      (newBoard.winners, newLog)
     else {
       val nextUsers =
         if (newBoard.fullCells.size > board.fullCells.size) users
         else users.tail :+ nextUser
-      Thread.sleep(100)
-      game(nextUsers, newBoard)
+      gameWithLog(nextUsers, newBoard, newLog)
     }
   }
 
