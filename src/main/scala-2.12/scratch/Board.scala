@@ -1,9 +1,8 @@
-package pbt
-
-import java.awt.event.ActionEvent
+package scratch
 
 import jline.TerminalFactory
 import jline.console.{ConsoleReader, KeyMap}
+import pbt._
 
 import scala.collection.mutable
 
@@ -164,7 +163,7 @@ object Test extends App {
     // TODO update adjacent cell
     val newCell = board.state(yc)(xc)
     if (newCell.fullBorder) {
-      board.state(yc)(xc) = FullCell(User(Ansi.orange))
+      board.state(yc)(xc) = FullCell(User(Ansi.red))
     }
     term.restorePos
     term.savePos
@@ -186,7 +185,6 @@ object Test extends App {
   println(board.state)
 
   println(Ansi.resetForegroundColor)
-  println(Ansi.resetBackgroundColor)
 
   term.eraseDisplay(2)
 

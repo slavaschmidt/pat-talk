@@ -1,12 +1,13 @@
 package pbt
 
 import pbt.Demo.Board
+import scratch.Term
 
 import scala.util.Random
 
 object RunnableDemo extends App {
 
-  val players = Seq(Demo.User(Ansi.green, Demo.fullStrategy), Demo.User(Ansi.orange, Demo.randomStrategy))
+  val players = Seq(Demo.User(Ansi.green, Demo.randomStrategy), Demo.User(Ansi.yellow, Demo.randomStrategy), Demo.User(Ansi.navy, Demo.randomStrategy), Demo.User(Ansi.red, Demo.fullStrategy))
   val board = Board(10, 10, () => Demo.EmptyCell(Set.empty))
   val (winners, log) = Demo.game(players, board)
 
@@ -47,7 +48,8 @@ object Demo {
   def randomStrategy: Strategy = board => {
     val cell = board.emptyCells.apply(Random.nextInt(board.emptyCells.size))
     val (x, y) = board.coords(cell)
-    val border = Border.all.diff(cell.borders).head
+    val borders = Border.all.diff(cell.borders)
+    val border = borders.toIndexedSeq.apply(Random.nextInt(borders.size))
     Move(x, y, border)
   }
   def finishingStrategy: Strategy = board => {
@@ -81,7 +83,8 @@ object Demo {
       else if (lastBestCells.nonEmpty) lastBestCells(Random.nextInt(lastBestCells.size))
       else cells(Random.nextInt(cells.size))
     val (x, y) = board.coords(cell)
-    val border = Border.all.diff(cell.borders).head
+    val borders = Border.all.diff(cell.borders)
+    val border = borders.toIndexedSeq.apply(Random.nextInt(borders.size))
     Move(x, y, border)
   }
 

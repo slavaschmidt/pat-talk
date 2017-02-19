@@ -1,6 +1,9 @@
 package pbt
 
-import pbt.Demo.{Board, Border, Cell}
+import pbt.demo.{Board, Border, Bottom, Cell, Top}
+import scratch.Term
+
+import scala.language.implicitConversions
 
 object SpeakerCheat {
   val term = new Term(System.out)
@@ -22,29 +25,55 @@ object SpeakerCheat {
       topLine + bottomLine + "\n"
     }
 
+    class RichBoard(b: Board) extends Board(b.width, b.height, b.cells) {
+      def row(i: Int) = cells.slice(i * width, i * width + width)
+    }
+
+    implicit def richBoard(b: Board): RichBoard = new RichBoard(b)
+
     def fullBoard = {
       drawLine(topLine)(board.row(0).map(richCell)) +
         (for { i <- 1 until board.height } yield drawLine(midLine)(board.row(i).map(richCell))).mkString +
         drawLine(botLine, drawLine = false)(board.row(board.height-1).map(richCell).map(_.mirror))
     }
 
-    def printBoard = {
-      term.eraseDisplay(2)
-      term.pos(1, 1)
-      println(fullBoard)
-    }
-
     fullBoard
   }
 
+  def printBoard(board: Board) = {
+    term.eraseDisplay(2)
+    term.pos(1, 1)
+    println(drawBoard(board))
+  }
+
+
   implicit def richCell(cell: Cell): RichCell = RichCell(cell)
 
-  case class RichCell(cell: Cell, up: Border = Demo.Up, left: Border = Demo.Left) {
+  case class RichCell(cell: Cell, up: Border = Top, left: Border = demo.Left) {
     def topChar = if (cell.borders.contains(up)) "─" else " "
     def leftChar = if (cell.borders.contains(left)) "│" else " "
-    def center = cell.user.map(o => color(o.color) + "█" + resetColor).getOrElse(" ")
+    def center = cell.owner.map(o => color(o.color) + "█" + resetColor).getOrElse(" ")
     def color(c: Int) = Ansi.textColor(c)
     def resetColor = Ansi.resetColor
-    def mirror: RichCell = RichCell(cell, Demo.Down, Demo.Right)
+    def mirror: RichCell = RichCell(cell, Bottom, demo.Right)
   }
+}
+
+object RunnableDemo extends App {
+
+  val players = Seq(demo.Player(Ansi.green, demo.fullStrategy), demo.Player(Ansi.yellow, demo.fullStrategy), demo.Player(Ansi.navy, demo.fullStrategy), demo.Player(Ansi.red, demo.fullStrategy))
+  val board = Board(15, 15, _ => demo.EmptyCell(Set.empty))
+  val (winners, log) = demo.Game.apply(players, board)
+
+  val term = new Term(System.out)
+  term.savePos
+
+  log.foreach { l =>
+    SpeakerCheat.printBoard(l)
+    Thread.sleep(10)
+  }
+  term.eraseDisplay(2)
+  term.restorePos
+  println(log.size)
+  println(winners)
 }

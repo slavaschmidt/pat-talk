@@ -1,8 +1,9 @@
-package pbt
+package scratch
 
-import java.io.{PrintStream, Writer}
+import java.io.PrintStream
 
-import Ansi._
+import pbt.Ansi
+import pbt.Ansi.{resetColor, textColor}
 
 class Term(out: PrintStream) {
 
@@ -55,32 +56,4 @@ class Term(out: PrintStream) {
 
 
 
-}
-
-object Ansi {
-  val csi = "\033["
-  def textColor(color: Int) = s"${csi}38;5;${color}m"
-  val resetColor = s"${csi}0m"
-  val resetUnderline = "\u001b[24m"
-  val resetForegroundColor = "\u001b[39m"
-  val resetBackgroundColor = "\u001b[49m"
-
-  val black = 0
-  val maroon = 1
-  val green = 2
-  val brown = 3
-  val navy = 4
-  val magenta = 5
-  val teal = 6
-  val silver = 7
-  val gray = 8
-  val red = 9
-  val lime = 10
-  val yellow = 11
-  val blue = 12
-  val pink = 13
-  val cyan = 14
-  val white = 15
-
-  val orange = 166
 }
