@@ -1,12 +1,18 @@
 package pbt
 
-import pbt.demo.{Board, Border, Bottom, Cell, Top}
+import pbt.demo._
 import scratch.Term
 
 import scala.language.implicitConversions
 
 object SpeakerCheat {
   val term = new Term(System.out)
+
+  def printBoard(board: Board) = {
+    term.eraseDisplay(2)
+    term.pos(1, 1)
+    println(drawBoard(board))
+  }
 
   def drawBoard(board: Board) = {
     type Border = (String, String, String)
@@ -40,12 +46,6 @@ object SpeakerCheat {
     fullBoard
   }
 
-  def printBoard(board: Board) = {
-    term.eraseDisplay(2)
-    term.pos(1, 1)
-    println(drawBoard(board))
-  }
-
 
   implicit def richCell(cell: Cell): RichCell = RichCell(cell)
 
@@ -63,7 +63,7 @@ object RunnableDemo extends App {
 
   val players = Seq(demo.Player(Ansi.green, demo.fullStrategy), demo.Player(Ansi.yellow, demo.fullStrategy), demo.Player(Ansi.navy, demo.fullStrategy), demo.Player(Ansi.red, demo.fullStrategy))
   val board = Board(15, 15, _ => demo.EmptyCell(Set.empty))
-  val (winners, log) = demo.Game.apply(players, board)
+  val (winners, log) = demo.game(players, board)
 
   val term = new Term(System.out)
   term.savePos
