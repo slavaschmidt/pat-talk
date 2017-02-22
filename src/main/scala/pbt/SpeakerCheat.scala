@@ -9,9 +9,9 @@ object SpeakerCheat {
   val term = new Term(System.out)
 
   def printBoard(board: Board) = {
-    term.eraseDisplay(2)
-    term.pos(1, 1)
+    term.savePos
     println(drawBoard(board))
+    term.restorePos
   }
 
   def drawBoard(board: Board) = {
