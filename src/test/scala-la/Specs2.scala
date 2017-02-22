@@ -1,11 +1,8 @@
-package pbt
-
 import java.io.File
-
-import org.specs2.{ScalaCheck, Specification}
 
 import org.scalacheck._
 import org.scalacheck.util.Pretty
+import org.specs2.{ScalaCheck, Specification}
 
 import scalaz.syntax.applicative._
 

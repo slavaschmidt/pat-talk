@@ -1,8 +1,6 @@
-package pbt
-
 import org.junit.Assert
-import org.scalacheck.{Gen, Properties}
 import org.scalacheck.Prop.forAll
+import org.scalacheck.Properties
 
 import scala.util.Try
 

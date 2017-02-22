@@ -1,42 +1,38 @@
 package pbt
-import scala.util.Random
 
-object demo {
+object Demo {
 
-  type Color = Int
-  type Strategy = Board => Option[Move]
+  type Game = (Players, Board) => (Winners, Log)
+
   type Players = Seq[Player]
   type Winners = Set[Player]
+
+  case class Player(color: Color, strategy: Strategy)
+
+  type Strategy = Board => Move
+
+  type Color = Int
+
   type Log = Seq[Board]
-  type Game = (Players, Board) => (Winners, Log)
-  val randomStrategy: Board => Option[Move] = board => {
-    val filters = Seq[Cell => Boolean](_.borders.size < 4)
-    Strategies.select(filters)(board)
-  }
-  val finishingStrategy: Board => Option[Move] = board => {
-    val filters = Seq[Cell => Boolean](_.borders.size == 3, _.borders.size < 4)
-    Strategies.select(filters)(board)
-  }
-  val fullStrategy: Board => Option[Move] = board => {
-    val filters = Seq[Cell => Boolean](_.borders.size == 3, _.borders.size == 1, _.borders.size == 0, _.borders.size < 4)
-    Strategies.select(filters)(board)
-  }
-  val allStrategies = Seq(randomStrategy, finishingStrategy, fullStrategy)
-  val allBorders: Set[Border] = Set(Top, Bottom, Left, Right)
-  val game: Game = (players, board) => Game.nextTurn(players, board, Seq.empty)
-  val turn: (Board, Player) => Board = (board, player) => {
-    player.strategy.apply(board).fold(board) { move =>
-      board.apply(move, player).fold(board) { adjacent =>
-        adjacent.apply(move.adjacent, player).getOrElse(adjacent)
-      }
+
+  type Turn = (Players, Board) => (Players, Board)
+
+  def game: Game = (players, board) => game0(players, board, Seq.empty)
+
+  def game0: (Players, Board, Log) => (Winners, Log) = (players, board, log) => {
+    if (board.filter(_.notFull).isEmpty) (board.winners, log.reverse)
+    else {
+      val (newPlayers, newBoard) = turn(players, board)
+      game0(newPlayers, newBoard, newBoard +: log)
     }
   }
 
-  sealed trait Border
-
-  trait Cell {
-    def owner: Option[Player]
-    def borders: Set[Border]
+  def turn: Turn = (players, board) => {
+    val player = players.head
+    val move = player.strategy(board)
+    val newBoard = board.update(move, player).update(move.adjacent, player)
+    if (newBoard.results == board.results) (players.tail :+ player, newBoard)
+    else (players, newBoard)
   }
 
   case class Move(x: Int, y: Int, border: Border) {
@@ -48,105 +44,90 @@ object demo {
     }
   }
 
-  case class Player(color: Color, strategy: Strategy)
+  sealed trait Border
+  case object Left extends Border
+  case object Right extends Border
+  case object Bottom extends Border
+  case object Top extends Border
+
+  val allBorders: Set[Border] = Set(Left, Right, Bottom, Top)
+
+  sealed trait Cell {
+    def borders: Set[Border]
+    def owner: Option[Player]
+    lazy val full: Boolean = borders.size == 4
+    lazy val notFull: Boolean = !full
+  }
 
   case class EmptyCell(borders: Set[Border]) extends Cell {
+    def this() = this(Set.empty)
     val owner = None
   }
 
   case class FullCell(player: Player) extends Cell {
+    val borders: Set[Border] = Set(Top, Bottom, Left, Right)
     val owner = Some(player)
-    override def borders = Set(Top, Bottom, Left, Right)
   }
 
-  case class Board(width: Int, height: Int, cells: Seq[Cell]) {
-    def fullCells: Seq[(Int, Int, Cell)] = filter(_.borders.size == 4)
+  def randomBorder(cell: Cell): Border = random(allBorders.diff(cell.borders))
 
-    def filter(f: Cell => Boolean): Seq[(Int, Int, Cell)] =
-      cells.zipWithIndex.collect {
-        case (c,i) if f(c) => (i % width, i /width, c)
-      }
+  def randomCell(cells: Seq[(Int, Int, Cell)]): (Int, Int, Cell) = random(cells)
 
-    def apply(m: Move, player: Player): Option[Board] = {
-      idx(m) map { i =>
-        cells(i) match {
-          case f : FullCell => this
-          case e @ EmptyCell(borders) if (borders + m.border).size == 4 =>
-            new Board(width, height, cells.updated(i, FullCell(player)))
-          case e @ EmptyCell(borders) =>
-            new Board(width, height, cells.updated(i, EmptyCell(borders + m.border)))
-        }
-      }
-    }
-
-    def idx(m: Move): Option[Int] =
-      if (m.x >= width || m.y >= height || m.x < 0 || m.y < 0) None else Some(m.y * width + m.x)
-  }
+  val randomStrategy: Strategy = Strategies.select(Seq(_.notFull))
+  val avoidingStrategy: Strategy = Strategies.select(Seq(_.borders.size < 2))
+  val finishingStrategy: Strategy = Strategies.select(Seq(_.borders.size == 3))
+  val fullStrategy: Strategy = Strategies.select(Seq(_.borders.size == 3, _.borders.size == 1, _.borders.isEmpty))
 
   object Strategies {
-    def select(filters: Seq[(Cell) => Boolean]): (Board) => Option[Move] = (board: Board) => {
+    def select(filters: Seq[Cell => Boolean]): Strategy = board => {
       filters.foldLeft(None: Option[Move]) { case (result, nextTry) =>
         result.orElse {
           board.filter(nextTry) match {
             case Nil => None
             case nonempty =>
-              val cell = randomCell(nonempty)
-              Some(Move(cell._1, cell._2, randomBorder(cell._3)))
+              val (x, y, cell) = randomCell(nonempty)
+              Some(Move(x, y, randomBorder(cell)))
           }
         }
-      }
+      }.getOrElse(randomStrategy(board))
     }
-
-    def randomBorder(cell: Cell) = {
-      val borders = allBorders.diff(cell.borders)
-      borders.toIndexedSeq(Random.nextInt(borders.size))
-    }
-
-    def randomCell(cells: Seq[(Int, Int, Cell)]) =
-      cells(Random.nextInt(cells.size))
   }
 
-  case object Top extends Border
+  val allStrategies = Seq(randomStrategy, avoidingStrategy, finishingStrategy, fullStrategy)
 
-  case object Bottom extends Border
+  case class Board(width: Int, height: Int, cells: Seq[Cell]) {
+    def filter(f: Cell => Boolean): Seq[(Int, Int, Cell)] =
+      cells.zipWithIndex.collect {
+        case (c, i) if f(c) => (i % width, i / width, c)
+      }
 
-  case object Left extends Border
+    def update(move: Move, player: Player): Board =
+      if (move.x < 0 || move.y < 0 || move.x >= width || move.y >= height) this
+      else {
+        val cell = cells(idx(move))
+        if (cell.borders.contains(move.border)) this
+        else if (cell.borders.size == 3)
+          Board(width, height, cells.updated(idx(move), FullCell(player)))
+        else
+          Board(width, height, cells.updated(idx(move), EmptyCell(cell.borders + move.border)))
+      }
 
-  case object Right extends Border
+    def idx(m: Move): Int = m.y * width + m.x
 
-  object EmptyCell {
-    def apply: Cell = new EmptyCell(Set.empty)
+    lazy val results: Map[Player, Int] = cells.collect {
+      case FullCell(owner) => owner
+    }.groupBy(identity).mapValues(_.size)
+
+
+    lazy val winners: Winners = results.filter {
+      case (_, count) => count == results.values.max
+    }.keySet
   }
 
   object Board {
-    def apply(width: Int, height: Int, cell: Int => Cell): Board = {
-      val cells = for {
-        i <- 0 until width * height
-      } yield cell(i)
-      new Board(width, height, cells)
-    }
-  }
-
-  object Game {
-
-    val nextTurn: (Players, Board, Log) => (Winners, Log) = (players, board, log) => {
-      if (board.cells.isEmpty || players.isEmpty) (Set.empty[Player], Seq.empty[Board])
-      else if (board.filter(_.owner.isEmpty).isEmpty) (countWinners(board), log.reverse)
-      else {
-        val player = players.head
-        val nextBoard = turn(board, player)
-        val nextPlayers = if (nextBoard.fullCells.size > board.fullCells.size) players else players.tail :+ player
-        nextTurn(nextPlayers, nextBoard, nextBoard +: log)
-      }
-    }
-
-    def countWinners(board: Board): Winners = results(board).headOption.map {
-      case (_, count) =>  results(board).filter(_._2 == count).map(_._1)
-    }.toSeq.flatten.toSet
-
-    def results(board: Board): Seq[(Player, Color)] = board.cells.collect {
-      case FullCell(owner) => owner
-    }.groupBy(_.color).map { case (color, cells) => cells.head -> cells.length }.toSeq.sortBy(_._2)
+    def apply(width: Int, height: Int, gen: Int => Cell) =
+      new Board(width, height, Vector.fill(width * height)(gen(0)))
   }
 
 }
+

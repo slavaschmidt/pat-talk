@@ -1,8 +1,7 @@
-package pbt
-
-import collection.mutable.Stack
 import org.scalatest._
 import org.scalatest.prop.PropertyChecks
+
+import scala.collection.mutable.Stack
 
 // http://www.scalatest.org/user_guide/property_based_testing
 
