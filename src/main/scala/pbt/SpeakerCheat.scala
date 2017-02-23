@@ -9,9 +9,9 @@ object SpeakerCheat {
   val term = new Term(System.out)
 
   def printBoard(board: Board) = {
-    term.savePos
+    term.eraseDisplay(2)
+    term.pos(1, 1)
     println(drawBoard(board))
-    term.restorePos
   }
 
   def drawBoard(board: Board) = {
@@ -62,14 +62,14 @@ object SpeakerCheat {
 object RunnableDemo extends App {
 
   val players = Seq(Player(Ansi.green, randomStrategy), Player(Ansi.yellow, randomStrategy), Player(Ansi.navy, finishingStrategy), Player(Ansi.red, fullStrategy))
-  val board = Board(15, 15, _ => EmptyCell(Set.empty))
+  val board = new Board(15, 15)
   val (winners, log) = game(players, board)
 
   val term = new Term(System.out)
 
   log.foreach { l =>
     SpeakerCheat.printBoard(l)
-    Thread.sleep(50)
+    Thread.sleep(20)
   }
 
 

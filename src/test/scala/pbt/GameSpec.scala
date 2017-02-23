@@ -21,24 +21,27 @@ object GameSpec extends Properties("Game") {
     height <- Gen.choose(1,20)
     n <- Gen.chooseNum(0,3)
     border <- Gen.listOfN(n, Gen.oneOf(allBorders.toSeq))
-  } yield Board(width, height, (i: Int) => EmptyCell(border.toSet))
+  } yield new Board(width, height, EmptyCell(border.toSet))
 
   implicit def emptyBoardsGen(low: Int = 1, high: Int = 20): Gen[Board] = for {
     width <- Gen.choose(low, high)
     height <- Gen.choose(low, high)
-  } yield Board(width, height, (i: Int) => new EmptyCell())
+  } yield new Board(width, height)
 
-  implicit def borderMove(board: Board): Gen[Move] = for {
-    x <- Gen.oneOf(0, board.width-1)
-    y <- Gen.oneOf(0, board.height-1)
-    border = (x,y) match {
-      case (0, _) => Left
-      case (xx, _) if xx == board.width-1 => Right
-      case (_, 0) => Top
-      case (_, yy) if yy == board.height-1 => Bottom
-
+  implicit def borderMove(board: Board): Gen[Move] = {
+    val right = board.width-1
+    val bottom = board.height-1
+    for {
+      x <- Gen.choose(0, right)
+      y <- Gen.choose(0, bottom)
+      border <- Gen.oneOf(allBorders.toSeq)
+    } yield border match {
+      case Top => Move(x, 0, border)
+      case Bottom => Move(x, bottom, border)
+      case Left => Move(0, y, border)
+      case Right => Move(right, y, border)
     }
-  } yield Move(x, y, border)
+  }
 
   implicit def moveGen(board: Board): Gen[Move] = for {
     x <- Gen.oneOf(1, board.width-2)
@@ -48,6 +51,7 @@ object GameSpec extends Properties("Game") {
 
   property("Game") = forAll(playersGen, emptyBoardsGen()) { (players: Players, board: Board) =>
     val (winners, log) = game(players, board)
+    // log map SpeakerCheat.printBoard
     all(
       "all winners are players" |: winners.diff(players.toSet).isEmpty,
       "One or two changed cells" |: log.sliding(2).forall { case Seq(before, after) =>
@@ -92,12 +96,12 @@ object GameSpec extends Properties("Game") {
     }
   }
 
-  property("Strategies are different") = forAllNoShrink(playersGen, emptyBoardsGen(5, 20)) { (players: Players, board: Board) =>
+  property("Higher-ranked strategy wins") = forAllNoShrink(playersGen, emptyBoardsGen(5, 20)) { (players: Players, board: Board) =>
     val (winners, _) = game(players, board)
-    val winningStrategy = winners.headOption.map(_.strategy).map(allStrategies.indexOf)
+    val winningStrategy = winners.headOption.map(_.strategy).map(allStrategies.indexOf).get
     val strategies = players.map(_.strategy).map(allStrategies.indexOf)
     collect(winningStrategy, strategies.max) {
-      winningStrategy.forall(_ + 1 >= strategies.max)
+      winningStrategy + 1 >= strategies.max
     }
   }
 
