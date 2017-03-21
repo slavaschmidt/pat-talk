@@ -12,10 +12,10 @@ package object pbt {
   }
 
   trait Rectangle {
-    def width: Int
-    def height: Int
-    def contains(p: Point): Boolean = p.x >= 0 && p.y >= 0 && p.x < width && p.y < height
-    def idx(p: Point): Int = p.y * width + p.x
+    def w: Int
+    def h: Int
+    def contains(p: Point): Boolean = p.x >= 0 && p.y >= 0 && p.x < w && p.y < h
+    def idx(p: Point): Int = p.y * w + p.x
 
 
   }

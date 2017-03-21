@@ -2,12 +2,13 @@ name := "pbt"
 
 version := "1.0"
 
-scalaVersion := "2.12.1"
+scalaVersion := "2.11.8"
 
 libraryDependencies ++= Seq(
   "jline" % "jline" % "2.14.3",
 
   "junit" % "junit" % "4.12" % "test",
+  "com.novocode" % "junit-interface" % "0.11" % Test exclude("junit", "junit-dep"),
 
   "org.scalacheck" %% "scalacheck" % "1.13.4" % "test",
 
