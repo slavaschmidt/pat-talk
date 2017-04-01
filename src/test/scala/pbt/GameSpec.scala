@@ -1,105 +1,98 @@
 package pbt
 
-import org.scalacheck.Prop._
 import org.scalacheck._
-import pbt.Demo._
+import org.scalacheck.Prop._
+
+import Game._
 
 object GameSpec extends Properties("Game") {
 
-  implicit val playerGen: Gen[Player] = for {
+  val playerGen = for {
     color <- Gen.oneOf(Ansi.colors)
-    strategy <- Gen.oneOf(allStrategies)
+    strategy <- Gen.oneOf(Strategies.all)
   } yield Player(color, strategy)
 
-  implicit val playersGen: Gen[Players] = for {
-    num <- Gen.chooseNum(2, 6)
-    player <- Gen.listOfN(num, playerGen)
-  } yield player.distinct
+  val playersGen = for {
+    num <- Gen.choose(2, 6)
+    players <- Gen.containerOfN[Set, Player](num, playerGen)
+  } yield players.toSeq
 
-  implicit val boardsGen: Gen[Board] = for {
-    width <- Gen.choose(1,20)
-    height <- Gen.choose(1,20)
+  def boardGen(min: Int, max: Int) = for {
+    w <- Gen.choose(min, max)
+    h <- Gen.choose(min, max)
     n <- Gen.chooseNum(0,3)
-    border <- Gen.listOfN(n, Gen.oneOf(allBorders.toSeq))
-  } yield new Board(width, height, EmptyCell(border.toSet))
+    cellEdges <- Gen.listOfN(w*h, Gen.containerOfN[Set, Edge](n, Gen.oneOf(Edges.all.toSeq)))
+  } yield Board(w,h, cellEdges.map(EmptyCell))
 
-  implicit def emptyBoardsGen(low: Int = 1, high: Int = 20): Gen[Board] = for {
-    width <- Gen.choose(low, high)
-    height <- Gen.choose(low, high)
-  } yield new Board(width, height)
+  def emptyBoardGen(min: Int, max: Int) = for {
+    w <- Gen.choose(min, max)
+    h <- Gen.choose(min, max)
+  } yield new Board(w,h)
 
-  implicit def borderMove(board: Board): Gen[Move] = {
-    val right = board.width-1
-    val bottom = board.height-1
-    for {
-      x <- Gen.choose(0, right)
-      y <- Gen.choose(0, bottom)
-      border <- Gen.oneOf(allBorders.toSeq)
-    } yield border match {
-      case Top => Move(x, 0, border)
-      case Bottom => Move(x, bottom, border)
-      case Left => Move(0, y, border)
-      case Right => Move(right, y, border)
-    }
+  def moveGen(b: Board) = for {
+    x <- Gen.choose(1, b.w-2)
+    y <- Gen.choose(1, b.h-2)
+    freeEdge = random(Edges.all.diff(b.cells(y*b.w+x).edges))
+  } yield Move(x,y,freeEdge)
+
+  def borderMoveGen(b: Board) = for {
+    x <- Gen.choose(0, b.w-1)
+    y <- Gen.choose(0, b.h-1)
+    edge = random(Edges.all.diff(b.cells(y*b.w+x).edges))
+  } yield edge match {
+    case Top => Move(x,0,edge)
+    case Bottom => Move(x,b.h-1,edge)
+    case Left => Move(0,y,edge)
+    case Right => Move(b.w-1,y,edge)
   }
 
-  implicit def moveGen(board: Board): Gen[Move] = for {
-    x <- Gen.oneOf(1, board.width-2)
-    y <- Gen.oneOf(1, board.height-2)
-    border <- Gen.oneOf(allBorders.toSeq)
-  } yield Move(x, y, border)
-
-  property("Game") = forAll(playersGen, emptyBoardsGen()) { (players: Players, board: Board) =>
-    val (winners, log) = game(players, board)
-    // log map SpeakerCheat.printBoard
+  property("Game") = forAll(boardGen(2, 10), playersGen.suchThat(_.size > 1)) { (b: Board, p: Players) =>
+    val (winners, log) = game(b, p)
     all(
-      "all winners are players" |: winners.diff(players.toSet).isEmpty,
-      "One or two changed cells" |: log.sliding(2).forall { case Seq(before, after) =>
-        val boardDiff = after.cells.diff(before.cells)
-        boardDiff.size == 1 || boardDiff.size == 2
-      }
+      "all winners played" |: winners.diff(p.toSet).isEmpty,
+      "all cells are taken"|: log.last.filter(_.owner.isEmpty).isEmpty,
+      "winners have most cells"|: winners.forall(log.last.results(_) == log.last.results.values.max)
     )
   }
 
-  property("Turn Players") = forAllNoShrink(playersGen, boardsGen) { (p: Players, b: Board) =>
-    val (players, board) = turn(p, b)
-    val boardDiff = board.cells.diff(b.cells)
-    all (
-      "No new players" |: players.toSet.diff(p.toSet).isEmpty,
-      classify(board.results == b.results, "no cell taken", "cell taken") {
-        atLeastOne (
-          board.results == b.results ==> ("The player is last in the queue if no cell was taken" |: { players.last.color == p.head.color }),
-          board.results != b.results ==> ("The player has a next turn if it took a cell" |: (players.head == p.head) && boardDiff.forall(_.full))
-        )
-      }
-    )
-  }
-
-  property("Turn Board") = forAllNoShrink(playersGen, boardsGen) { (p: Players, b: Board) =>
-    val (players, board) = turn(p, b)
-    val boardDiff = board.cells.diff(b.cells)
-    "One or two changed cells" |: atLeastOne(boardDiff.size == 1, boardDiff.size == 2)
-  }
-
-  property("Move on the border changes one cell") = forAll(playerGen, emptyBoardsGen()) { (player: Player, board: Board) =>
-    forAll(borderMove(board)) { (move: Move) =>
-      board.cells.diff(board.update(move, player).update(move.adjacent, player).cells).size == 1
+  property("Turn") = forAll(boardGen(2, 20), playersGen.suchThat(_.size > 1)) { (b: Board, p: Players) =>
+    val (board, players) = turn(b, p)
+    val cellTaken = board.results(p.head) != b.results(p.head)
+    classify(cellTaken, "cell taken", "no cell taken") {
+      atLeastOne(
+         cellTaken ==> ("player keeps turn if cell was taken" |: players == p),
+         ! cellTaken ==> ("player loses turn if no cell was taken" |: all (
+          players.head == p(1),
+          players.last == p.head
+        ))
+      )
     }
   }
 
-  implicit val playerArb = Arbitrary(playerGen)
-  implicit val boardArb = Arbitrary(emptyBoardsGen(3,20))
-
-  property("Move changes two cells") = forAll { (player: Player, board: Board) =>
-    forAll(moveGen(board)) { (move: Move) =>
-      board.cells.diff(board.update(move, player).update(move.adjacent, player).cells).size == 2
+  property("Move") = forAll(emptyBoardGen(4, 20), playerGen) { (b: Board, p: Player) =>
+    forAll (moveGen(b)) { m: Move =>
+      val board = m(b,p)
+      board.cells.diff(b.cells).size == 2
     }
   }
 
-  property("Higher-ranked strategy wins") = forAllNoShrink(playersGen, emptyBoardsGen(5, 20)) { (players: Players, board: Board) =>
-    val (winners, _) = game(players, board)
-    val winningStrategy = winners.headOption.map(_.strategy).map(allStrategies.indexOf).get
-    val strategies = players.map(_.strategy).map(allStrategies.indexOf)
+  property("Border Move") = forAll(emptyBoardGen(4, 20), playerGen) { (b: Board, p: Player) =>
+    forAll (borderMoveGen(b)) { m: Move =>
+      val board = m(b,p)
+      board.cells.diff(b.cells).size == 1
+    }
+  }
+
+  property("Adjacent Move") = forAll(boardGen(3, 20)) { (b: Board) =>
+    forAll (moveGen(b)) { m: Move =>
+      m == m.adjacent.adjacent
+    }
+  }
+
+  property("Higher-ranked strategy wins") = forAllNoShrink(playersGen, boardGen(5, 20)) { (players: Players, board: Board) =>
+    val (winners, _) = game(board, players)
+    val winningStrategy = winners.headOption.map(_.strategy).map(Strategies.all.indexOf).get
+    val strategies = players.map(_.strategy).map(Strategies.all.indexOf)
     collect(winningStrategy, strategies.max) {
       winningStrategy + 1 >= strategies.max
     }

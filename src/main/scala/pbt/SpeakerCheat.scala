@@ -1,6 +1,7 @@
 package pbt
 
-import pbt.Demo._
+import pbt.Game._
+import pbt.Game.Strategies._
 import java.io.PrintStream
 import pbt.Ansi.{resetColor, textColor}
 import scala.language.implicitConversions
@@ -15,15 +16,15 @@ object SpeakerCheat {
   }
 
   def drawBoard(board: Board) = {
-    type Border = (String, String, String)
+    type Edge = (String, String, String)
     val topLine = ("┌", "┬", "┐\n")
     val midLine = ("├", "┼", "┤\n")
     val botLine = ("└", "┴", "┘\n")
 
 
-    def drawLine(border: Border, drawLine: Boolean = true)(row: Seq[RichCell]) = {
-      val line: String = row.init.map { _.topChar + border._2 }.mkString
-      val topLine = border._1 + line + row.last.topChar + border._3
+    def drawLine(edge: Edge, drawLine: Boolean = true)(row: Seq[RichCell]) = {
+      val line: String = row.init.map { _.topChar + edge._2 }.mkString
+      val topLine = edge._1 + line + row.last.topChar + edge._3
       val bottomLine =
         if (drawLine)
           row.map { c => c.leftChar + c.center }.mkString + row.last.mirror.leftChar
@@ -31,16 +32,16 @@ object SpeakerCheat {
       topLine + bottomLine + "\n"
     }
 
-    class RichBoard(b: Board) extends Board(b.width, b.height, b.cells) {
-      def row(i: Int) = cells.slice(i * width, i * width + width)
+    class RichBoard(b: Board) extends Board(b.w, b.h, b.cells) {
+      def row(i: Int) = cells.slice(i * w, i * w + w)
     }
 
     implicit def richBoard(b: Board): RichBoard = new RichBoard(b)
 
     def fullBoard = {
       drawLine(topLine)(board.row(0).map(richCell)) +
-        (for { i <- 1 until board.height } yield drawLine(midLine)(board.row(i).map(richCell))).mkString +
-        drawLine(botLine, drawLine = false)(board.row(board.height-1).map(richCell).map(_.mirror))
+        (for { i <- 1 until board.h } yield drawLine(midLine)(board.row(i).map(richCell))).mkString +
+        drawLine(botLine, drawLine = false)(board.row(board.h-1).map(richCell).map(_.mirror))
     }
 
     fullBoard
@@ -49,9 +50,9 @@ object SpeakerCheat {
 
   implicit def richCell(cell: Cell): RichCell = RichCell(cell)
 
-  case class RichCell(cell: Cell, up: Border = Top, left: Border = Left) {
-    def topChar = if (cell.borders.contains(up)) "─" else " "
-    def leftChar = if (cell.borders.contains(left)) "│" else " "
+  case class RichCell(cell: Cell, up: Edge = Top, left: Edge = Left) {
+    def topChar = if (cell.edges.contains(up)) "─" else " "
+    def leftChar = if (cell.edges.contains(left)) "│" else " "
     def center = cell.owner.map(o => color(o.color) + "█" + resetColor).getOrElse(" ")
     def color(c: Int) = Ansi.textColor(c)
     def resetColor = Ansi.resetColor
@@ -63,7 +64,7 @@ object RunnableDemo extends App {
 
   val players = Seq(Player(Ansi.green, randomStrategy), Player(Ansi.yellow, randomStrategy), Player(Ansi.navy, finishingStrategy), Player(Ansi.red, fullStrategy))
   val board = new Board(15, 15)
-  val (winners, log) = game(players, board)
+  val (winners, log) = game(board, players)
 
   val term = new Term(System.out)
 
